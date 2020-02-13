@@ -417,18 +417,30 @@ public final class TypeAnnotationPass implements CompilerPass {
             TypeDeclarationNode root = namedType(newTypeName);
             if (n.getChildCount() > 0 && n.getFirstChild().isNormalBlock()) {
               Node block = n.getFirstChild();
-              // Convert {Array<t>} to t[]
-              if ("Array".equals(typeName)) {
-                return arrayType(convertTypeNodeAST(block.getFirstChild()));
-              }
 
-              // Convert index signature types
-              if ("Object".equals(typeName)) {
-                TypeDeclarationNode indexSignatureNode =
-                    indexSignatureType(
-                        convertTypeNodeAST(block.getFirstChild()),
-                        convertTypeNodeAST(block.getSecondChild()));
-                return indexSignatureNode;
+              switch (typeName) {
+                case "Array":
+                  // Convert {Array<t>} to t[]
+                  return arrayType(convertTypeNodeAST(block.getFirstChild()));
+                case "Object":
+                  // Convert index signature types
+                  TypeDeclarationNode indexSignatureNode =
+                      indexSignatureType(
+                          convertTypeNodeAST(block.getFirstChild()),
+                          convertTypeNodeAST(block.getSecondChild()));
+                  return indexSignatureNode;
+                case "Promise":
+                  boolean promiseOfVoidOrUndefined =
+                      block.getFirstChild().getString().equals("undefined")
+                          || block.getFirstChild().getString().equals("void");
+                  return parameterizedType(
+                      namedType("Promise"),
+                      ImmutableList.of(
+                          promiseOfVoidOrUndefined
+                              ? namedType("void")
+                              : convertTypeNodeAST(block.getFirstChild())));
+                default:
+                  // N/A
               }
 
               // Convert generic types
